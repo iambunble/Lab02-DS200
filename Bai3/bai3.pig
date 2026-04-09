@@ -1,5 +1,5 @@
 raw_data = LOAD '/home/bunble_05/hotel-review.csv' USING PigStorage(';') AS (
-    id:int,
+    id:chararray,
     comment:chararray,
     category:chararray,
     aspect:chararray,
@@ -12,26 +12,32 @@ data_valid = FOREACH raw_data GENERATE
 
 data_valid = FILTER data_valid BY sentiment IS NOT NULL AND sentiment != '';
 
--- Aspect có nhiều đánh giá NEGATIVE nhất
+-- Xử lý NEGATIVE
 neg_data   = FILTER data_valid BY sentiment == 'negative';
 neg_group  = GROUP neg_data BY aspect;
-neg_count  = FOREACH neg_group GENERATE
-                 group          AS aspect,
+neg_count  = FOREACH neg_group GENERATE 
+                 group AS aspect, 
                  COUNT(neg_data) AS num_neg;
-neg_sorted = ORDER neg_count BY num_neg DESC;
-neg_top1   = LIMIT neg_sorted 1;
 
-STORE neg_sorted INTO '/home/bunble_05/lab02/output/bai3_negative_aspects' USING PigStorage(';');
-STORE neg_top1   INTO '/home/bunble_05/lab02/output/bai3_most_negative' USING PigStorage(';');
+neg_all    = GROUP neg_count ALL;
+neg_top1   = FOREACH neg_all {
+    result = TOP(1, 1, neg_count); 
+    GENERATE FLATTEN(result);
+};
 
--- Aspect có nhiều đánh giá POSITIVE nhất
+STORE neg_top1 INTO '/home/bunble_05/lab02/output/bai3_most_negative' USING PigStorage(';');
+
+-- Xử lý POSITIVE
 pos_data   = FILTER data_valid BY sentiment == 'positive';
 pos_group  = GROUP pos_data BY aspect;
-pos_count  = FOREACH pos_group GENERATE
-                 group          AS aspect,
+pos_count  = FOREACH pos_group GENERATE 
+                 group AS aspect, 
                  COUNT(pos_data) AS num_pos;
-pos_sorted = ORDER pos_count BY num_pos DESC;
-pos_top1   = LIMIT pos_sorted 1;
 
-STORE pos_sorted INTO '/home/bunble_05/lab02/output/bai3_positive_aspects' USING PigStorage(';');
-STORE pos_top1   INTO '/home/bunble_05/lab02/output/bai3_most_positive' USING PigStorage(';');
+pos_all    = GROUP pos_count ALL;
+pos_top1   = FOREACH pos_all {
+    result = TOP(1, 1, pos_count);
+    GENERATE FLATTEN(result);
+};
+
+STORE pos_top1 INTO '/home/bunble_05/lab02/output/bai3_most_positive' USING PigStorage(';');
